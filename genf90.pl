@@ -27,7 +27,7 @@ my $mpitype = {'text' => 'MPI_CHARACTER',
 
 my @dims =(0..5);
 
-
+my $write_dtypes = "no";
 # begin
 
 foreach(@ARGV){
@@ -162,12 +162,13 @@ foreach(@ARGV){
     if($itypeflag==1){
 	my $str;
 	$str.="#include \"dtypes.h\"\n";
-#	foreach (keys %$itype){
-#	    $str.="#define $itypename->{$_} $itype->{$_}\n";
-#	}
+	$write_dtypes = "yes";
 	unshift(@output,$str);
     }
     print @output;
+    writedtypes() if(!(-e "dtypes.h") && $write_dtypes == "yes");
+
+
 }
 
 
@@ -193,6 +194,17 @@ sub build_repeatstr{
     }
 }
 
+sub writedtypes{
+    open(F,">dtypes.h");
+    print F 
+"#define TYPEDOUBLE 102
+#define TYPEINT 103
+#define TYPETEXT 100
+#define TYPELONG 104
+#define TYPEREAL 101	
+";
+    close(F);
+}
 
 sub buildout{
     my ($func) = @_;
