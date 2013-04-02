@@ -81,6 +81,11 @@ foreach(@ARGV){
 	next if($line =~ /\s*!pl/);
 
 	$itypeflag=1 if($line =~ /{ITYPE}/);
+	$itypeflag=1 if($line =~ /TYPETEXT/);
+	$itypeflag=1 if($line =~ /TYPEREAL/);
+	$itypeflag=1 if($line =~ /TYPEDOUBLE/);
+	$itypeflag=1 if($line =~ /TYPEINT/);
+	$itypeflag=1 if($line =~ /TYPELONG/);
 
 	
         if($contains==0){	
@@ -163,7 +168,7 @@ foreach(@ARGV){
 	my $str;
 	$str.="#include \"dtypes.h\"\n";
 	$write_dtypes = "yes";
-	unshift(@output,$str);
+	print $str;
     }
     print @output;
     writedtypes() if(!(-e "dtypes.h") && $write_dtypes == "yes");
