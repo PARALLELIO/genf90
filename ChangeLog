@@ -5,6 +5,15 @@ SVN $URL: https://svn-ccsm-models.cgd.ucar.edu/tools/genf90/trunk/ChangeLog $
 This file describes what tags were created and why
 ===========================
 Originator: jedwards
+Date: Nov 13, 2013
+Model: genf90
+Version: genf90_131113
+One-line summary: handles derived types and interface blocks better (Sean
+Santos)
+
+
+===========================
+Originator: jedwards
 Date: Apr 02, 2013
 Model: genf90
 Version: genf90_130402

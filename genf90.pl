@@ -45,10 +45,10 @@ foreach(@ARGV){
 	if(/^\s*interface/i){
 	    push(@parsetext,"# $cnt \"$infile\"\n");
 	}
-	if(/^\s*subroutine/i){
+	if(/^[^!]*subroutine/i){
 	    push(@parsetext,"# $cnt \"$infile\"\n");
 	}
-	if(/^.*[^d] function/i){
+	if(/^[^!]*function/i){
 	    push(@parsetext,"# $cnt \"$infile\"\n");
 	}
 
@@ -59,6 +59,7 @@ foreach(@ARGV){
 
     my $end;
     my $contains=0;
+    my $in_type_block=0;
     my @unit;
     my $unitcnt=0;
     my $date = localtime();
@@ -74,7 +75,8 @@ foreach(@ARGV){
     my $dimmodifier;
     my $typemodifier;
     my $itypeflag;
-    my $typeblock;
+    my $block;
+    my $block_type;
     my $cppunit;
     foreach $line (@parsetext){
 # skip parser comments
@@ -88,7 +90,7 @@ foreach(@ARGV){
 	$itypeflag=1 if($line =~ /TYPELONG/);
 
 	
-        if($contains==0){	
+        if($contains==0){
 	    if($line=~/\s*!\s*DIMS\s+[\d,]+!*/){
 		$dimmodifier=$line;
 		next;
@@ -97,33 +99,60 @@ foreach(@ARGV){
 		$typemodifier=$line;
 		next;
 	    }
-	    if($line=~/^\s*type\s+.*\{DIMS\}/i or $line=~/^\s*type\s+.*\{TYPE\}/i){
-		$typeblock=$line;
-		next;
+            if ((defined $typemodifier or defined $dimmodifier)
+                and not defined $block and $line=~/^\s*#[^{]*$/) {
+                push(@output, $line);
+                next;
+            }
+            # Figure out the bounds of a type statement.
+            # Type blocks start with "type," "type foo" or "type::" but not
+            # "type(".
+            $in_type_block=1 if($line=~/^\s*type\s*[,:[:alpha:]]/i);
+            $in_type_block=0 if($line=~/^\s*end\s*type/i);
+	    if(not defined $block) {
+                if ($line=~/^\s*type[^[:alnum:]_].*(\{TYPE\}|\{DIMS\})/i or
+                    $line=~/^[^!]*(function|subroutine).*(\{TYPE\}|\{DIMS\})/i) {
+                    $block=$line;
+                    next;
+                }
+                if ($line=~/^\s*interface.*(\{TYPE\}|\{DIMS\})/i) {
+                    $block_type="interface";
+                    $block=$line;
+                    next;
+                }
 	    }
-	    if($line=~/^\s*end\s+type\s+.*\{DIMS\}/i or $line=~/^\s*end\s+type\s+.*\{TYPE\}/i){
-		$line = $typeblock.$line;
-		undef $typeblock;
+	    if(not defined $block_type and
+               ($line=~/^\s*end\s+type\s+.*(\{TYPE\}|\{DIMS\})/i or
+                $line=~/^\s*end\s+(function|subroutine)\s+.*(\{TYPE\}|\{DIMS\})/i)){
+
+		$line = $block.$line;
+		undef $block;
 	    }
-	    if(defined $typeblock){
-		$typeblock = $typeblock.$line;
+            if ($line=~/^\s*end\s*interface/i and
+                defined $block) {
+                $line = $block.$line;
+		undef $block;
+		undef $block_type;
+            }
+	    if(defined $block){
+		$block = $block.$line;
 		next;
 	    }
 	    if(defined $dimmodifier){
 		$line = $dimmodifier.$line;
-		undef $dimmodifier ;
+		undef $dimmodifier;
 	    } 
 	    if(defined $typemodifier){
 		$line = $typemodifier.$line;
-		undef $typemodifier unless($typeblock==1);
+		undef $typemodifier;
 	    } 
 	    
 	    push(@output, buildout($line));
-	}
-	if(($line =~ /^\s*contains\s*!*/i) or
-	  ($line =~ /^\s*!\s*Not a module/i)){
-	    $contains=1;
-	    next;
+            if(($line =~ /^\s*contains\s*!*/i && ! $in_type_block) or
+               ($line =~ /^\s*!\s*Not a module/i)){
+                $contains=1;
+                next;
+            }
 	}
 	if($line=~/^\s*end module\s*/){
 	    $end = $line;
@@ -133,13 +162,15 @@ foreach(@ARGV){
 	if($contains==1){
 	    # first parse into functions or subroutines
             if($cppunit || !(defined($unit[$unitcnt]))){
-		# Make cpp lines between routines units
-		if($line =~ /^\s*\#/){
+		# Make cpp lines and blanks between routines units.
+		if($line =~ /^\s*\#(?!\s[[:digit:]]+)/ || $line =~/^\s*$/ || $line=~/^\s*!(?!\s*(TYPE|DIMS))/){
 		    push(@{$unit[$unitcnt]},$line);
-		    $unitcnt++;
 		    $cppunit=1;
 		    next;
-		}
+		} else {
+                    $cppunit=0;
+                    $unitcnt++;
+                }
 	    }
 
 	       
@@ -147,7 +178,6 @@ foreach(@ARGV){
 	    if($line =~ /\s*end function/i or $line =~ /\s*end subroutine/i){
 		$unitcnt++;
 	    }
-	    $cppunit = 0 unless($line =~ /^\s*\#/ || $line =~/^\s*$/ || $line=~/^\s*!/);
 
 	}
     }
