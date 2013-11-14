@@ -185,12 +185,10 @@ foreach(@ARGV){
 
 
     for($i=0;$i<$unitcnt;$i++){
-	my $func = join('',@{$unit[$i]});
-
-#    print "unitcnt = $i  $func\n" ;
-
-
-	push(@output, buildout($func));
+	if(defined($unit[$i])){
+		my $func = join('',@{$unit[$i]});
+		push(@output, buildout($func));
+	}	
     }
     push(@output,@{$unit[$#unit]}) if($unitcnt==$#unit);
     push(@output, $end);	
