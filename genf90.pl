@@ -1,7 +1,37 @@
 #!/usr/bin/env perl
 use strict;
-
 my $outfile;
+# Beginning with F90, Fortran has strict typing of variables based on "TKR"
+# (type, kind, and rank). In many cases we want to write subroutines that
+# provide the same functionality for different variable types and ranks. In
+# order to do this without cut-and-paste duplication of code, we create a
+# template file with the extension ".F90.in", which can be parsed by this script
+# to generate F90 code for all of the desired specific types.
+#
+# Keywords are delimited by curly brackets: {}
+# 
+# {TYPE} and {DIMS} are used to generate the specific subroutine names from the 
+#            generic template
+# {TYPE} : Variable type name; implemented types are character, 4 or 8 byte real,
+#          and 4 or 8 byte integer.
+#                allowed values: text, real, double, int, long, logical
+#                default values:  text, real, double, int
+# {VTYPE} : Used to generate variable declarations to match the specific type.
+#                if {TYPE}=double then {VTYPE} is "real(r8)"
+# {ITYPE}, {ITYPENAME} : Used to generate CPP statements for the specific type.
+# {MPITYPE} : Used to generate MPI types corresponding to the specific type.
+# 
+# {DIMS} : Rank of arrays, "0" for scalar.
+#                allowed values: 0-7
+#                default values : 0-5
+# {DIMSTR} : Generates the parenthesis and colons used for a variable
+#            declaration of {DIMS} dimensions.
+#                if {DIMS}=3 then {DIMSTR} is (:,:,:)
+# {REPEAT} : Repeats an expression for each number from 1 to {DIMS}, with each
+#            iteration separated by commas.
+#                {REPEAT: foo(#, bar)}
+#                expands to this:
+#                foo(1, bar), foo(2, bar), foo(3, bar), ...
 
 # defaults 
 my @types = qw(text real double int);
@@ -9,17 +39,20 @@ my $vtype = {'text' => 'character(len=*)',
 	     'real' => 'real(r4)', 
 	     'double' => 'real(r8)',
 	     'int'    => 'integer(i4)',
-	     'long'   => 'integer(i8)'};
+	     'long'   => 'integer(i8)',
+             'logical' => 'logical' };
 my $itype = {'text' => 100, 
 	     'real' => 101, 
 	     'double' => 102,
 	     'int'    => 103,
-	     'long'   => 104};
+	     'long'   => 104,
+             'logical' => 105};
 my $itypename = {'text' => 'TYPETEXT', 
 	     'real' =>  'TYPEREAL', 
 	     'double' => 'TYPEDOUBLE',
 	     'int'    => 'TYPEINT',
-	     'long'   =>  'TYPELONG'};
+	     'long'   =>  'TYPELONG',
+             'logical' => 'TYPELOGICAL'};
 my $mpitype = {'text' => 'MPI_CHARACTER',
 	       'real' => 'MPI_REAL4',
 	       'double' => 'MPI_REAL8',
@@ -230,11 +263,12 @@ sub build_repeatstr{
 sub writedtypes{
     open(F,">dtypes.h");
     print F 
-"#define TYPEDOUBLE 102
-#define TYPEINT 103
-#define TYPETEXT 100
-#define TYPELONG 104
+"#define TYPETEXT 100
 #define TYPEREAL 101	
+#define TYPEDOUBLE 102
+#define TYPEINT 103
+#define TYPELONG 104
+#define TYPELOGICAL 105
 ";
     close(F);
 }
