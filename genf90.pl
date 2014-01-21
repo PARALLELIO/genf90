@@ -57,6 +57,18 @@ my $mpitype = {'text' => 'MPI_CHARACTER',
 	       'real' => 'MPI_REAL4',
 	       'double' => 'MPI_REAL8',
 	       'int' => 'MPI_INTEGER'};
+# Netcdf C datatypes
+my $nctype = {'text' => 'text',
+	      'real' => 'float',
+	      'double' => 'double',
+	      'int' => 'int'};
+# C interoperability types
+my $ctype = {'text' => 'character(C_CHAR)',
+	     'real' => 'real(C_FLOAT)',
+	     'double' => 'real(C_DOUBLE)',
+	     'int' => 'integer(C_INT)'};
+
+
 
 my @dims =(0..5);
 
@@ -208,10 +220,19 @@ foreach(@ARGV){
 
 	       
 	    push(@{$unit[$unitcnt]},$line);
-	    if($line =~ /\s*end function/i or $line =~ /\s*end subroutine/i){
-		$unitcnt++;
+	    if ($line=~/^\s*interface/i) {
+		$block_type="interface";
+		$block=$line;
 	    }
-
+	    if ($line=~/^\s*end\s*interface/i) {
+		undef $block_type;
+		undef $block;
+	    }
+	    unless(defined $block){
+		if($line =~ /\s*end function/i or $line =~ /\s*end subroutine/i){
+		    $unitcnt++;
+		}
+	    }
 	}
     }
     my $i;
@@ -315,6 +336,8 @@ sub buildout{
 		$str =~ s/{VTYPE}/$vtype->{$type}/g;
 		$str =~ s/{ITYPE}/$itype->{$type}/g;
 		$str =~ s/{MPITYPE}/$mpitype->{$type}/g;
+		$str =~ s/{NCTYPE}/$nctype->{$type}/g;
+		$str =~ s/{CTYPE}/$ctype->{$type}/g;
 		$str =~ s/{DIMS}/$dims/g;
 		$str =~ s/{DIMSTR}/$dimstr/g;
                 $str =~ s/{REPEAT:([^#}]*)#([^#}]*)}/$repeatstr/eeg;
@@ -352,6 +375,8 @@ sub buildout{
 	    $str =~ s/{VTYPE}/$vtype->{$type}/g;
 	    $str =~ s/{ITYPE}/$itype->{$type}/g;
 	    $str =~ s/{MPITYPE}/$mpitype->{$type}/g;
+	    $str =~ s/{NCTYPE}/$nctype->{$type}/g;
+	    $str =~ s/{CTYPE}/$ctype->{$type}/g;
 	    $outstr.=$str;
 	}
     }else{
